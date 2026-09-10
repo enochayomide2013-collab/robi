@@ -10,6 +10,9 @@ import { AiWorldBuilderModal } from './AiWorldBuilderModal';
 
 interface AcadoStudioProps {
   onPublishGame: (gameData: Partial<AcadoGame>) => void;
+  initialWorldData?: WorldDefinition | null;
+  initialGameMeta?: { title?: string; description?: string; category?: string; tags?: string[] } | null;
+  onPlayTestGame?: (game: AcadoGame) => void;
 }
 
 const DEFAULT_WORLD: WorldDefinition = {
@@ -29,19 +32,42 @@ const DEFAULT_WORLD: WorldDefinition = {
   quests: [],
 };
 
-export const AcadoStudio: React.FC<AcadoStudioProps> = ({ onPublishGame }) => {
+export const AcadoStudio: React.FC<AcadoStudioProps> = ({ 
+  onPublishGame,
+  initialWorldData,
+  initialGameMeta,
+  onPlayTestGame,
+}) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [worldData, setWorldData] = useState<WorldDefinition>(DEFAULT_WORLD);
-  const [selectedObjId, setSelectedObjId] = useState<string | null>('obj_1');
+  const [worldData, setWorldData] = useState<WorldDefinition>(initialWorldData || DEFAULT_WORLD);
+  const [selectedObjId, setSelectedObjId] = useState<string | null>(initialWorldData?.objects?.[0]?.id || 'obj_1');
   const [activeScript, setActiveScript] = useState<StudioScript | null>(null);
   const [showAiBuilder, setShowAiBuilder] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
 
   // Game Metadata for publishing
-  const [gameTitle, setGameTitle] = useState('My Custom 3D World');
-  const [gameDescription, setGameDescription] = useState('An exciting original 3D experience built in ACADO Studio!');
-  const [gameCategory, setGameCategory] = useState<'Adventure' | 'Racing' | 'Obby' | 'Football' | 'Tycoon'>('Adventure');
+  const [gameTitle, setGameTitle] = useState(initialGameMeta?.title || 'My Custom 3D World');
+  const [gameDescription, setGameDescription] = useState(initialGameMeta?.description || 'An exciting original 3D experience built in ACADO Studio!');
+  const [gameCategory, setGameCategory] = useState<'Adventure' | 'Racing' | 'Obby' | 'Football' | 'Tycoon'>(
+    (initialGameMeta?.category as any) || 'Adventure'
+  );
   const [isPublished, setIsPublished] = useState(false);
+
+  // Update if initialWorldData changes
+  useEffect(() => {
+    if (initialWorldData) {
+      setWorldData(initialWorldData);
+      if (initialWorldData.objects?.length) {
+        setSelectedObjId(initialWorldData.objects[0].id);
+      }
+    }
+  }, [initialWorldData]);
+
+  useEffect(() => {
+    if (initialGameMeta?.title) setGameTitle(initialGameMeta.title);
+    if (initialGameMeta?.description) setGameDescription(initialGameMeta.description);
+    if (initialGameMeta?.category) setGameCategory(initialGameMeta.category as any);
+  }, [initialGameMeta]);
 
   const selectedObject = worldData.objects.find((o) => o.id === selectedObjId);
 
@@ -190,6 +216,39 @@ export const AcadoStudio: React.FC<AcadoStudioProps> = ({ onPublishGame }) => {
             <Sparkles className="w-4 h-4 text-yellow-300" />
             AI World Builder
           </button>
+
+          {onPlayTestGame && (
+            <button
+              onClick={() => {
+                onPlayTestGame({
+                  id: `playtest_${Date.now()}`,
+                  title: gameTitle || 'Studio Playtest',
+                  description: gameDescription,
+                  creatorId: 'studio_user',
+                  creatorName: 'Studio Creator',
+                  thumbnailUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80',
+                  category: gameCategory as any,
+                  playerCount: 1,
+                  maxPlayers: 16,
+                  likesCount: 0,
+                  favoritesCount: 0,
+                  visitsCount: 1,
+                  rating: 5.0,
+                  trending: false,
+                  currentVersion: 'v1.0',
+                  tags: ['Studio', 'Custom', 'Playtest'],
+                  worldData: worldData,
+                  activeServers: [{ id: 'srv_test', name: 'Playtest Server', region: 'Local', currentPlayers: 1, maxPlayers: 16, ping: 5 }],
+                  achievements: [],
+                  versions: [],
+                });
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 cursor-pointer"
+            >
+              <Play className="w-4 h-4 fill-current" />
+              Play Test
+            </button>
+          )}
           
           <button
             onClick={() => setActiveScript(worldData.scripts[0])}
@@ -388,8 +447,17 @@ export const AcadoStudio: React.FC<AcadoStudioProps> = ({ onPublishGame }) => {
       {showAiBuilder && (
         <AiWorldBuilderModal
           onClose={() => setShowAiBuilder(false)}
-          onApplyGeneratedWorld={(genWorld) => {
+          onApplyGeneratedWorld={(genWorld, meta) => {
             setWorldData(genWorld);
+            if (meta?.title) setGameTitle(meta.title);
+            if (meta?.description) setGameDescription(meta.description);
+            if (meta?.category) setGameCategory(meta.category as any);
+          }}
+          onPlayWorld={(game) => {
+            if (onPlayTestGame) onPlayTestGame(game);
+          }}
+          onPublishWorld={(gameData) => {
+            onPublishGame(gameData);
           }}
         />
       )}

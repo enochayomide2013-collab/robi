@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Flame, Sparkles, Gamepad2, Compass, Play, Trophy, Users, Heart, ArrowRight, ShieldCheck 
 } from 'lucide-react';
-import { NavigationTab, UserProfile, AcadoGame, ItemCosmetic } from './types';
+import { NavigationTab, UserProfile, AcadoGame, ItemCosmetic, WorldDefinition } from './types';
 import { INITIAL_USER, SEED_GAMES, COSMETIC_MARKETPLACE, COMMUNITIES_SEED, LIVE_EVENTS_SEED, INITIAL_MODERATION_REPORTS } from './data/mockData';
 
 // Layout
@@ -38,6 +38,10 @@ export function App() {
 
   // Active 3D Playing Experience State
   const [activePlayingGame, setActivePlayingGame] = useState<AcadoGame | null>(null);
+
+  // Studio loaded world from AI Architect
+  const [studioWorldData, setStudioWorldData] = useState<WorldDefinition | null>(null);
+  const [studioGameMeta, setStudioGameMeta] = useState<{ title?: string; description?: string; category?: string; tags?: string[] } | null>(null);
 
   // Modals
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -78,7 +82,7 @@ export function App() {
       rating: 5.0,
       trending: true,
       currentVersion: 'v1.0',
-      tags: ['3D', 'Community', 'Custom'],
+      tags: newGameData.tags || ['3D', 'Community', 'Custom'],
       worldData: (newGameData.worldData as any) || SEED_GAMES[0].worldData,
       activeServers: [
         { id: 'srv_custom_1', name: 'Server #1 (US East)', region: 'US East', currentPlayers: 1, maxPlayers: 16, ping: 22 },
@@ -87,11 +91,12 @@ export function App() {
         { id: 'ach_c1', title: 'Pioneer Explorer', description: 'Joined this user created world', rewardCoins: 50, unlocked: true, progress: 1, maxProgress: 1 },
       ],
       versions: [
-        { versionNumber: 'v1.0', releaseDate: '2026-09-10', changelog: 'Initial publish to ACADO Universe', worldDataSnapshot: SEED_GAMES[0].worldData },
+        { versionNumber: 'v1.0', releaseDate: '2026-09-10', changelog: 'Initial publish to ACADO Universe', worldDataSnapshot: (newGameData.worldData as any) || SEED_GAMES[0].worldData },
       ],
     };
 
     setGames([created, ...games]);
+    handleRewardCoins(100);
   };
 
   // Handler for purchasing cosmetics
@@ -155,8 +160,8 @@ export function App() {
               <div className="relative rounded-3xl overflow-hidden bg-slate-900 border border-slate-800/80 shadow-2xl">
                 <div className="relative h-72 sm:h-96 w-full">
                   <img
-                    src="https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80"
-                    alt="Featured World"
+                    src={games[0].thumbnailUrl || "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1200&q=80"}
+                    alt={games[0].title}
                     className="w-full h-full object-cover filter brightness-90"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
@@ -164,30 +169,53 @@ export function App() {
                   <div className="absolute bottom-6 left-6 right-6 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
                     <div className="space-y-2 max-w-2xl">
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-xs shadow-lg flex items-center gap-1">
-                          <Flame className="w-3.5 h-3.5 fill-slate-950" />
-                          FEATURED EXPERIENCE
+                        <span className="px-3 py-1 rounded-xl bg-rose-500 text-white font-black text-xs shadow-lg flex items-center gap-1">
+                          <Flame className="w-3.5 h-3.5 fill-white" />
+                          FEATURED HARDCORE OBBY
                         </span>
                         <span className="px-3 py-1 rounded-xl bg-slate-800/80 backdrop-blur-md text-cyan-300 font-bold text-xs border border-cyan-500/30">
-                          1,830 Players Online
+                          {games[0].playerCount.toLocaleString()} Players Online
                         </span>
                       </div>
 
-                      <h1 className="text-3xl sm:text-4xl font-black text-white tracking-wide">ACADO City Racing 3D</h1>
+                      <h1 className="text-3xl sm:text-4xl font-black text-white tracking-wide">{games[0].title}</h1>
                       <p className="text-xs sm:text-sm text-slate-300 line-clamp-2 font-medium">
-                        High-speed multiplayer racing with customizable hypercars, pit stops, checkpoints, and AI pit bosses!
+                        {games[0].description}
                       </p>
                     </div>
 
                     <button
                       onClick={() => setActivePlayingGame(games[0])}
-                      className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 via-indigo-500 to-fuchsia-500 hover:from-cyan-300 hover:to-fuchsia-400 text-slate-950 font-black text-base shadow-xl shadow-cyan-500/30 transform hover:scale-105 transition-all cursor-pointer flex items-center gap-2"
+                      className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-amber-500 to-yellow-400 hover:from-rose-400 hover:to-yellow-300 text-slate-950 font-black text-base shadow-xl shadow-amber-500/30 transform hover:scale-105 transition-all cursor-pointer flex items-center gap-2"
                     >
                       <Play className="w-5 h-5 fill-slate-950" />
-                      PLAY NOW
+                      PLAY HARDCORE OBBY
                     </button>
                   </div>
                 </div>
+              </div>
+
+              {/* AI World Builder Interactive Banner */}
+              <div className="relative rounded-3xl p-5 bg-gradient-to-r from-fuchsia-950/40 via-indigo-950/40 to-slate-900 border border-fuchsia-500/30 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-fuchsia-600 via-indigo-600 to-cyan-500 text-white shadow-lg shadow-fuchsia-500/25 shrink-0">
+                    <Sparkles className="w-7 h-7 animate-pulse text-yellow-300" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base sm:text-lg font-black text-white">Create 3D Games with AI World Architect</h2>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40 uppercase">New</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5">Prompt any game concept — racing tracks, volcanic obbys, sports arenas, or space outposts — and AI will build the 3D world instantly!</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsAiBuilderOpen(true)}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-500 to-indigo-600 hover:from-fuchsia-400 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-fuchsia-500/20 cursor-pointer whitespace-nowrap flex items-center gap-2 transition-transform hover:scale-105 shrink-0"
+                >
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
+                  Launch AI Builder
+                </button>
               </div>
 
               {/* Categories Filter Bar */}
@@ -250,7 +278,12 @@ export function App() {
 
           {/* CREATE / ACADO STUDIO TAB */}
           {currentTab === 'CREATE' && (
-            <AcadoStudio onPublishGame={handlePublishGame} />
+            <AcadoStudio 
+              onPublishGame={handlePublishGame}
+              initialWorldData={studioWorldData}
+              initialGameMeta={studioGameMeta}
+              onPlayTestGame={(g) => setActivePlayingGame(g)}
+            />
           )}
 
           {/* FRIENDS TAB */}
@@ -318,12 +351,17 @@ export function App() {
       {isAiBuilderOpen && (
         <AiWorldBuilderModal
           onClose={() => setIsAiBuilderOpen(false)}
-          onApplyGeneratedWorld={(genWorld) => {
-            handlePublishGame({
-              title: 'AI Generated World Experience',
-              description: 'Generated by ACADO AI World Architect',
-              worldData: genWorld,
-            });
+          onApplyGeneratedWorld={(genWorld, meta) => {
+            setStudioWorldData(genWorld);
+            setStudioGameMeta(meta || null);
+            setCurrentTab('CREATE');
+          }}
+          onPlayWorld={(newGame) => {
+            setGames((prev) => [newGame, ...prev]);
+            setActivePlayingGame(newGame);
+          }}
+          onPublishWorld={(newGameData) => {
+            handlePublishGame(newGameData);
             setCurrentTab('HOME');
           }}
         />

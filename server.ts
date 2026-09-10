@@ -6,6 +6,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import { synthesizeProceduralWorld } from './server/worldGenerator.js';
 
 const app = express();
 const PORT = 3000;
@@ -30,72 +31,140 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', server: 'ACADO Core Universe Engine', version: '1.0.0' });
 });
 
+function withTimeout<T>(promise: Promise<T>, ms = 6000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('AI generation timed out')), ms)),
+  ]);
+}
+
 // AI WORLD BUILDER ENDPOINT
 app.post('/api/ai/build-world', async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, style, complexity } = req.body;
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: `You are the ACADO AI 3D World Architect. Convert the user's game request into a valid JSON 3D World definition for ACADO Studio.
+    let parsedResult: any = null;
+    let source: 'gemini' | 'synthesizer' = 'gemini';
+
+    const tryGenerate = async (modelName: string) => {
+      const call = ai.models.generateContent({
+        model: modelName,
+        contents: `You are the ACADO AI 3D World Architect. Convert the user's game request into a valid JSON 3D World definition for ACADO Studio.
 
 User Prompt: "${prompt}"
+Atmosphere Style: "${style || 'dynamic'}"
+Complexity: "${complexity || 'balanced'}"
 
 Generate a JSON object conforming strictly to this structure:
 {
-  "skyColor": "#0a0a23" (hex color),
-  "timeOfDay": "day" | "sunset" | "night" | "cyberpunk",
-  "weather": "clear" | "rain" | "snow" | "fog",
-  "gravity": 9.8,
-  "spawnPoint": [0, 1, 0],
-  "objects": [
-    {
-      "id": "string",
-      "name": "string",
-      "type": "block" | "sphere" | "cylinder" | "building" | "road" | "tree" | "car" | "npc" | "light" | "coin" | "checkpoint" | "finish_line" | "water" | "ramp" | "goal_post" | "lava_hazard",
-      "position": [x, y, z],
-      "rotation": [0, 0, 0],
-      "scale": [sx, sy, sz],
-      "color": "hex_color",
-      "material": "smooth" | "brick" | "neon" | "metal" | "wood",
-      "behavior": "static" | "moving" | "spinning" | "vehicle" | "npc_dialogue" | "hazard" | "collectible"
-    }
-  ],
-  "npcs": [
-    {
-      "id": "string",
-      "name": "string",
-      "role": "shopkeeper" | "quest_giver" | "guide" | "citizen",
-      "position": [x, y, z],
-      "dialogue": ["Greeting 1", "Greeting 2"]
-    }
-  ],
-  "quests": [
-    {
-      "id": "string",
-      "title": "string",
-      "description": "string",
-      "rewardCoins": 50,
-      "rewardXp": 100
-    }
-  ]
+  "title": "Exciting Experience Title",
+  "description": "Engaging description of this 3D experience (1-2 sentences)",
+  "category": "Racing" | "Obby" | "Adventure" | "Sports" | "RPG" | "Simulation",
+  "tags": ["3D", "Community", "Custom", "Action"],
+  "worldData": {
+    "skyColor": "#0a0a23",
+    "timeOfDay": "day" | "sunset" | "night" | "cyberpunk",
+    "weather": "clear" | "rain" | "snow" | "fog",
+    "gravity": 9.8,
+    "spawnPoint": [0, 1, 0],
+    "objects": [
+      {
+        "id": "string",
+        "name": "string",
+        "type": "block" | "sphere" | "cylinder" | "building" | "road" | "tree" | "car" | "npc" | "light" | "coin" | "checkpoint" | "finish_line" | "water" | "ramp" | "goal_post" | "lava_hazard",
+        "position": [x, y, z],
+        "rotation": [0, 0, 0],
+        "scale": [sx, sy, sz],
+        "color": "#hex",
+        "material": "smooth" | "brick" | "neon" | "metal" | "wood" | "glass",
+        "behavior": "static" | "moving" | "spinning" | "vehicle" | "npc_dialogue" | "hazard" | "collectible"
+      }
+    ],
+    "npcs": [
+      {
+        "id": "string",
+        "name": "string",
+        "role": "shopkeeper" | "quest_giver" | "guide" | "citizen",
+        "position": [x, y, z],
+        "dialogue": ["Greeting 1", "Greeting 2"]
+      }
+    ],
+    "quests": [
+      {
+        "id": "string",
+        "title": "string",
+        "description": "string",
+        "rewardCoins": 100,
+        "rewardXp": 200
+      }
+    ]
+  }
 }
 
-Include 6 to 12 realistic 3D objects arranged thoughtfully in 3D space with reasonable scale and coordinate positions.`,
-      config: {
-        responseMimeType: 'application/json',
-      },
-    });
+Include 10 to 18 realistic 3D objects arranged thoughtfully in 3D space with reasonable scale and coordinate positions (including platforms, hazards, collectible gold coins, and a finish_line gate).`,
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
 
-    const jsonText = response.text || '{}';
-    const parsedWorld = JSON.parse(jsonText);
-    res.json({ success: true, worldData: parsedWorld });
+      const response = await withTimeout(call, 6500);
+      const jsonText = response.text || '{}';
+      return JSON.parse(jsonText);
+    };
+
+    // 1. Try Fast Flash-Lite Model first for speed & reliability
+    try {
+      parsedResult = await tryGenerate('gemini-3.1-flash-lite');
+    } catch (err1: any) {
+      console.warn('gemini-3.1-flash-lite unavailable/timed out, trying procedural synthesis...', err1?.message);
+    }
+
+    if (parsedResult && (parsedResult.worldData || parsedResult.objects)) {
+      const finalWorld = parsedResult.worldData || parsedResult;
+      if (!Array.isArray(finalWorld.objects)) finalWorld.objects = [];
+      if (!Array.isArray(finalWorld.npcs)) finalWorld.npcs = [];
+      if (!Array.isArray(finalWorld.quests)) finalWorld.quests = [];
+      if (!Array.isArray(finalWorld.scripts)) finalWorld.scripts = [];
+      if (!finalWorld.skyColor) finalWorld.skyColor = '#0a0a23';
+      if (!finalWorld.spawnPoint) finalWorld.spawnPoint = [0, 1, 0];
+
+      return res.json({
+        success: true,
+        source: 'gemini',
+        worldData: finalWorld,
+        suggestedTitle: parsedResult.title || 'AI Generated 3D Experience',
+        suggestedDescription: parsedResult.description || `Custom AI-crafted world created from prompt: "${prompt}"`,
+        suggestedCategory: parsedResult.category || 'Adventure',
+        suggestedTags: parsedResult.tags || ['3D', 'Community', 'Custom'],
+      });
+    }
+
+    // 3. Fallback: Procedural Synthesis Engine
+    const synth = synthesizeProceduralWorld(prompt, style);
+    return res.json({
+      success: true,
+      source: 'synthesizer',
+      worldData: synth.worldData,
+      suggestedTitle: synth.title,
+      suggestedDescription: synth.description,
+      suggestedCategory: synth.category,
+      suggestedTags: synth.tags,
+    });
   } catch (error: any) {
-    console.error('AI World Builder error:', error);
-    res.status(500).json({ error: 'Failed to generate 3D world', details: error?.message });
+    console.error('AI World Builder fallback activated:', error);
+    const fallback = synthesizeProceduralWorld(req.body?.prompt || 'Adventure World');
+    return res.json({
+      success: true,
+      source: 'synthesizer',
+      worldData: fallback.worldData,
+      suggestedTitle: fallback.title,
+      suggestedDescription: fallback.description,
+      suggestedCategory: fallback.category,
+      suggestedTags: fallback.tags,
+    });
   }
 });
 

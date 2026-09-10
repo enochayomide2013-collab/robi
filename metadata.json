@@ -1,6 +1,6 @@
 {
   "name": "ACADO",
-  "description": "Play. Create. Explore. An original user-generated 3D gaming & creation universe.",
+  "description": "Play. Create. Explore. An original user-generated 3D gaming & creation universe featuring hardcore parkour obbys, AI world building, and multiplayer adventures.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

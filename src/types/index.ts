@@ -154,16 +154,19 @@ export interface ServerInfo {
 export interface World3DObject {
   id: string;
   name: string;
-  type: 'block' | 'sphere' | 'cylinder' | 'building' | 'road' | 'tree' | 'car' | 'npc' | 'light' | 'coin' | 'checkpoint' | 'finish_line' | 'water' | 'ramp' | 'goal_post' | 'lava_hazard';
+  type: 'block' | 'sphere' | 'cylinder' | 'building' | 'road' | 'tree' | 'car' | 'npc' | 'light' | 'coin' | 'checkpoint' | 'finish_line' | 'water' | 'ramp' | 'goal_post' | 'lava_hazard' | 'bounce_pad' | 'laser' | 'spinner';
   position: [number, number, number];
   rotation: [number, number, number];
   scale: [number, number, number];
   color: string;
   material?: 'smooth' | 'brick' | 'neon' | 'metal' | 'wood' | 'glass';
   interactable?: boolean;
-  behavior?: 'static' | 'moving' | 'spinning' | 'vehicle' | 'npc_dialogue' | 'hazard' | 'collectible';
+  behavior?: 'static' | 'moving' | 'spinning' | 'vehicle' | 'npc_dialogue' | 'hazard' | 'collectible' | 'oscillating' | 'fading' | 'hazard_spinner' | 'bouncy';
   dialogueText?: string;
   speed?: number;
+  stage?: number;
+  axis?: 'x' | 'y' | 'z';
+  distance?: number;
 }
 
 export interface WorldDefinition {

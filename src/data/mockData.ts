@@ -3,6 +3,7 @@
  */
 
 import { AcadoGame, ItemCosmetic, Community, LiveEvent, UserProfile, NotificationItem, ModerationReport } from '../types';
+import { HARDCORE_OBBY_GAME } from './hardcoreObby';
 
 export const COSMETIC_MARKETPLACE: ItemCosmetic[] = [
   { id: 'cosmetic_jacket_01', name: 'Neon Cyber Jacket', category: 'clothing', price: 250, imageUrl: '👕', color: '#1E88E5', rarity: 'epic', creatorName: 'ACADO Fashion', description: 'Glow-in-the-dark cybernetic streetwear.' },
@@ -73,6 +74,7 @@ export const INITIAL_USER: UserProfile = {
 };
 
 export const SEED_GAMES: AcadoGame[] = [
+  HARDCORE_OBBY_GAME,
   {
     id: 'game_racing_01',
     title: 'Neon Velocity Racing',

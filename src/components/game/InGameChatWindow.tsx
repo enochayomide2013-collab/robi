@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Send, MessageSquare, ChevronDown, ChevronUp, Bell, 
-  Sparkles, Smile, Filter, Users, ShieldAlert
+  Sparkles, Smile, Filter, Users, ShieldAlert, ShieldCheck
 } from 'lucide-react';
+import { sanitizeProfanity } from '../../utils/profanityFilter';
 
 export interface ChatMessage {
   id: string;
@@ -70,12 +71,13 @@ export const InGameChatWindow: React.FC<InGameChatWindowProps> = ({
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim()) return;
-    onSendMessage(inputText.trim());
+    const sanitized = sanitizeProfanity(inputText.trim());
+    onSendMessage(sanitized);
     setInputText('');
   };
 
   const handleQuickChat = (text: string) => {
-    onSendMessage(text);
+    onSendMessage(sanitizeProfanity(text));
   };
 
   const filteredMessages = messages.filter((msg) => {
@@ -102,6 +104,10 @@ export const InGameChatWindow: React.FC<InGameChatWindowProps> = ({
                 <span className="text-xs font-black text-white tracking-wide">World Chat</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
                   Online
+                </span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30 flex items-center gap-0.5">
+                  <ShieldCheck className="w-2.5 h-2.5" />
+                  Filtered
                 </span>
               </div>
             </div>
